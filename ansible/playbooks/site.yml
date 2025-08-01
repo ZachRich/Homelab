@@ -1,0 +1,25 @@
+---
+- name: Deploy complete Docker infrastructure
+  hosts: docker_hosts
+  become: yes
+  roles:
+    - docker
+    - traefik
+    - portainer
+    - pihole
+
+  post_tasks:
+    - name: Display deployment information
+      debug:
+        msg: |
+          🎉 Deployment Complete!
+          
+          Access your services:
+          • Traefik Dashboard: http://{{ ansible_default_ipv4.address }}:8080
+          • Portainer: http://{{ ansible_default_ipv4.address }}:9000
+          • PiHole: http://{{ ansible_default_ipv4.address }}/admin
+          
+          For HTTPS access (after DNS setup):
+          • Traefik: https://traefik.{{ domain_name }}
+          • Portainer: https://portainer.{{ domain_name }}
+          • PiHole: https://pihole.{{ domain_name }}

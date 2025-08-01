@@ -1,0 +1,55 @@
+---
+- name: Stop and disable systemd-resolved
+  systemd:
+    name: systemd-resolved
+    state: stopped
+    enabled: no
+
+- name: Remove systemd-resolved stub resolver
+  file:
+    path: /etc/resolv.conf
+    state: absent
+
+- name: Create new resolv.conf
+  copy:
+    content: |
+      nameserver 1.1.1.1
+      nameserver 8.8.8.8
+    dest: /etc/resolv.conf
+    mode: '0644'
+
+- name: Create PiHole directories
+  file:
+    path: "/opt/docker-data/pihole"
+    state: directory
+    mode: '0755'
+
+- name: Deploy PiHole container
+  community.docker.docker_container:
+    name: pihole
+    image: "pihole/pihole:2023.11.0"
+    state: started
+    restart_policy: unless-stopped
+    ports:
+      - "53:53/tcp"
+      - "53:53/udp"
+      - "8081:80/tcp"  # Expose web interface directly
+    volumes:
+      - "/opt/docker-data/pihole:/etc/pihole"
+    env:
+      TZ: "America/New_York"
+      WEBPASSWORD: "{{ pihole_web_password }}"
+      DNS1: "1.1.1.1"
+      DNS2: "8.8.8.8"
+      ServerIP: "{{ ansible_default_ipv4.address }}"
+      VIRTUAL_HOST: "pihole.homelab.local"
+    capabilities:
+      - NET_ADMIN
+    networks:
+      - name: proxy
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.pihole.rule: "Host(`pihole.homelab.local`)"
+      traefik.http.routers.pihole.entrypoints: "web"
+      traefik.http.services.pihole.loadbalancer.server.port: "80"
+    recreate: yes

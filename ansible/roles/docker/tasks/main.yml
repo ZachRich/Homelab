@@ -1,0 +1,90 @@
+---
+- name: Update apt cache
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+
+- name: Install Docker prerequisites
+  apt:
+    name:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - gnupg
+      - software-properties-common
+      - python3-pip
+      - python3-docker  # Add this - system Docker SDK
+    state: present
+
+- name: Add Docker GPG key
+  apt_key:
+    url: https://download.docker.com/linux/debian/gpg
+    state: present
+
+- name: Add Docker repository
+  apt_repository:
+    repo: "deb [arch=amd64] https://download.docker.com/linux/debian {{ ansible_distribution_release }} stable"
+    state: present
+
+- name: Install Docker
+  apt:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-compose-plugin
+    state: present
+    update_cache: yes
+
+- name: Start and enable Docker service
+  systemd:
+    name: docker
+    state: started
+    enabled: yes
+
+- name: Add user to docker group
+  user:
+    name: "{{ ansible_user }}"
+    groups: docker
+    append: yes
+
+# Remove the pip install task and replace with:
+- name: Install Python Docker SDK via apt
+  apt:
+    name:
+      - python3-docker
+    state: present
+
+- name: Reset SSH connection to allow user changes to affect ansible user
+  meta: reset_connection
+
+- name: Wait for Docker daemon to be ready
+  wait_for:
+    path: /var/run/docker.sock
+    state: present
+    timeout: 30
+
+- name: Test Docker is working
+  community.docker.docker_host_info:
+  register: docker_info
+
+- name: Create Docker network
+  community.docker.docker_network:
+    name: proxy
+    driver: bridge
+    ipam_config:
+      - subnet: "172.20.0.0/16"
+        gateway: "172.20.0.1"
+    state: present
+
+- name: Create docker data directories
+  file:
+    path: "/opt/docker-data/{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - traefik
+    - traefik/certs
+    - traefik/logs
+    - portainer
+    - pihole

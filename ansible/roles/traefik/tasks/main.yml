@@ -1,0 +1,56 @@
+---
+- name: Create Traefik configuration directory
+  file:
+    path: "{{ docker_data_path | default('/opt/docker-data') }}/traefik/{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - ""
+    - "certs"
+    - "logs"
+
+- name: Generate Traefik static configuration
+  copy:
+    content: |
+      api:
+        dashboard: true
+        insecure: true
+      
+      entryPoints:
+        web:
+          address: ":80"
+        websecure:
+          address: ":443"
+      
+      providers:
+        docker:
+          endpoint: "unix:///var/run/docker.sock"
+          network: "proxy"
+          exposedByDefault: false
+      
+      log:
+        level: INFO
+      
+      accessLog: {}
+    dest: "{{ docker_data_path | default('/opt/docker-data') }}/traefik/traefik.yml"
+    mode: '0644'
+
+- name: Deploy Traefik container
+  community.docker.docker_container:
+    name: traefik
+    image: "traefik:v3.1"
+    state: started
+    restart_policy: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "{{ docker_data_path | default('/opt/docker-data') }}/traefik/traefik.yml:/etc/traefik/traefik.yml:ro"
+      - "{{ docker_data_path | default('/opt/docker-data') }}/traefik/certs:/certs:rw"
+      - "{{ docker_data_path | default('/opt/docker-data') }}/traefik/logs:/logs:rw"
+    networks:
+      - name: proxy
+    # Remove problematic labels that were causing the auth middleware error
+    recreate: yes

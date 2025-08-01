@@ -1,0 +1,22 @@
+http:
+  middlewares:
+    auth:
+      basicAuth:
+        users:
+          - "{{ traefik_dashboard_user }}:{{ traefik_dashboard_password | password_hash('bcrypt') }}"
+
+    secure-headers:
+      headers:
+        frameDeny: true
+        sslRedirect: true
+        browserXssFilter: true
+        contentTypeNosniff: true
+        forceSTSHeader: true
+        stsIncludeSubdomains: true
+        stsPreload: true
+        stsSeconds: 31536000
+
+tls:
+  options:
+    default:
+      minVersion: "VersionTLS12"

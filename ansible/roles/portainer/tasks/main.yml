@@ -1,0 +1,20 @@
+---
+- name: Deploy Portainer container
+  community.docker.docker_container:
+    name: portainer
+    image: "portainer/portainer-ce:2.19.4"
+    state: started
+    restart_policy: unless-stopped
+    ports:
+      - "9000:9000"  # Expose directly
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "/opt/docker-data/portainer:/data"
+    networks:
+      - name: proxy
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.portainer.rule: "Host(`portainer.homelab.local`)"
+      traefik.http.routers.portainer.entrypoints: "web"
+      traefik.http.services.portainer.loadbalancer.server.port: "9000"
+    recreate: yes
