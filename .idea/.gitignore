@@ -1,0 +1,148 @@
+# Terraform files
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+*.tfvars
+*.tfvars.json
+.terraform/
+.terraform.lock.hcl
+terraform.tfplan
+terraform.tfplan.*
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Ansible files
+*.retry
+.ansible/
+ansible.log
+.vault_pass
+vault_password_file
+
+# SSH keys and certificates
+*.pem
+*.key
+*.pub
+id_rsa*
+id_ed25519*
+*.crt
+*.csr
+*.p12
+*.pfx
+
+# Secrets and sensitive data
+secrets/
+secrets.yml
+secrets.yaml
+.env
+.env.*
+*.secret
+vault.yml
+vault.yaml
+
+# Cloud-init generated files
+cloud-config.yaml
+user-data
+meta-data
+
+# Logs
+*.log
+logs/
+*.out
+*.err
+
+# Backup files
+*.bak
+*.backup
+*.old
+*.orig
+*~
+.#*
+#*#
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.vim/
+.netrwhist
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Node.js (if using any JS tools)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Temporary files
+tmp/
+temp/
+.tmp/
+.cache/
+
+# Docker files (if running locally)
+docker-compose.override.yml
+.dockerignore
+
+# Certificate and key files
+acme.json
+*.ca-bundle
+*.ca-crt
+*.ca-key
+*.ca-intermediate
+*.crt
+*.csr
+*.key
+*.ovpn
+*.p12
+*.pem
+
+# Proxmox specific
+*.qcow2
+*.vmdk
+*.img
+
+# Archives
+*.zip
+*.tar
+*.tar.gz
+*.tar.bz2
+*.7z
+*.rar
+
+# Local configuration overrides
+local.tf
+local.tfvars
+local-*.yml
+local-*.yaml
+*local*
+
+# Generated documentation
+docs/_build/
+site/
