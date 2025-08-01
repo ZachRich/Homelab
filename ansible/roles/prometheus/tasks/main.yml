@@ -1,0 +1,43 @@
+---
+- name: Create Prometheus directories
+  file:
+    path: "/opt/docker-data/prometheus/{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - ""
+    - "data"
+
+- name: Generate Prometheus configuration
+  template:
+    src: prometheus.yml.j2
+    dest: "/opt/docker-data/prometheus/prometheus.yml"
+    mode: '0644'
+
+- name: Deploy Prometheus container with Authelia
+  community.docker.docker_container:
+    name: prometheus
+    image: "prom/prometheus:v2.45.0"  # Hardcoded version
+    state: started
+    restart_policy: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - "/opt/docker-data/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro"
+      - "/opt/docker-data/prometheus/data:/prometheus"
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    user: "root"
+    networks:
+      - name: proxy
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.prometheus.rule: "Host(`prometheus.{{ domain_name | default('homelab.local') }}`)"
+      traefik.http.routers.prometheus.entrypoints: "web"
+      traefik.http.routers.prometheus.middlewares: "authelia@docker,secure-headers"
+      traefik.http.services.prometheus.loadbalancer.server.port: "9090"

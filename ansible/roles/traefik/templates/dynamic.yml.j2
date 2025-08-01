@@ -1,22 +1,30 @@
 http:
   middlewares:
-    auth:
-      basicAuth:
-        users:
-          - "{{ traefik_dashboard_user }}:{{ traefik_dashboard_password | password_hash('bcrypt') }}"
+    authelia:
+      forwardAuth:
+        address: "http://authelia:9091/api/verify?rd=https://auth.{{ domain_name }}"
+        trustForwardHeader: true
+        authResponseHeaders:
+          - "Remote-User"
+          - "Remote-Groups"
+          - "Remote-Name"
+          - "Remote-Email"
 
     secure-headers:
       headers:
         frameDeny: true
-        sslRedirect: true
         browserXssFilter: true
         contentTypeNosniff: true
-        forceSTSHeader: true
-        stsIncludeSubdomains: true
-        stsPreload: true
-        stsSeconds: 31536000
+        customFrameOptionsValue: "SAMEORIGIN"
 
-tls:
-  options:
-    default:
-      minVersion: "VersionTLS12"
+    cors-headers:
+      headers:
+        accessControlAllowMethods:
+          - GET
+          - OPTIONS
+          - PUT
+        accessControlAllowOriginList:
+          - "http://{{ domain_name }}"
+          - "http://*.{{ domain_name }}"
+        accessControlMaxAge: 100
+        addVaryHeader: true

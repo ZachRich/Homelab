@@ -1,0 +1,16 @@
+---
+- name: Deploy Node Exporter container
+  community.docker.docker_container:
+    name: node-exporter
+    image: "prom/node-exporter:latest"
+    state: started
+    restart_policy: unless-stopped
+    ports:
+      - "9100:9100"
+    command:
+      - '--path.rootfs=/host'
+    volumes:
+      - '/:/host:ro,rslave'
+    networks:
+      - name: proxy
+    pid_mode: host

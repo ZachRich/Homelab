@@ -20,36 +20,37 @@
 
 - name: Create PiHole directories
   file:
-    path: "/opt/docker-data/pihole"
+    path: "{{ docker_data_path }}/pihole"
     state: directory
     mode: '0755'
 
-- name: Deploy PiHole container
+- name: Deploy PiHole container with Authelia
   community.docker.docker_container:
     name: pihole
-    image: "pihole/pihole:2023.11.0"
+    image: "pihole/pihole:{{ pihole_version }}"
     state: started
     restart_policy: unless-stopped
     ports:
       - "53:53/tcp"
       - "53:53/udp"
-      - "8081:80/tcp"  # Expose web interface directly
+      - "8081:80/tcp"
     volumes:
-      - "/opt/docker-data/pihole:/etc/pihole"
+      - "{{ docker_data_path }}/pihole:/etc/pihole"
     env:
-      TZ: "America/New_York"
+      TZ: "{{ pihole_timezone }}"
       WEBPASSWORD: "{{ pihole_web_password }}"
       DNS1: "1.1.1.1"
       DNS2: "8.8.8.8"
       ServerIP: "{{ ansible_default_ipv4.address }}"
-      VIRTUAL_HOST: "pihole.homelab.local"
+      VIRTUAL_HOST: "pihole.{{ domain_name }}"
     capabilities:
       - NET_ADMIN
     networks:
       - name: proxy
     labels:
       traefik.enable: "true"
-      traefik.http.routers.pihole.rule: "Host(`pihole.homelab.local`)"
+      traefik.http.routers.pihole.rule: "Host(`pihole.{{ domain_name }}`)"
       traefik.http.routers.pihole.entrypoints: "web"
+      traefik.http.routers.pihole.middlewares: "authelia@docker,secure-headers"
       traefik.http.services.pihole.loadbalancer.server.port: "80"
     recreate: yes

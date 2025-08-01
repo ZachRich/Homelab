@@ -1,0 +1,66 @@
+---
+- name: Create Authelia directories
+  file:
+    path: "/opt/docker-data/authelia/{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - ""
+    - "config"
+
+- name: Generate Authelia configuration
+  template:
+    src: configuration.yml.j2
+    dest: "/opt/docker-data/authelia/config/configuration.yml"
+    mode: '0600'
+
+- name: Generate Authelia users database
+  template:
+    src: users_database.yml.j2
+    dest: "/opt/docker-data/authelia/config/users_database.yml"
+    mode: '0600'
+
+- name: Deploy Redis for Authelia
+  community.docker.docker_container:
+    name: redis
+    image: "redis:7-alpine"
+    state: started
+    restart_policy: unless-stopped
+    ports:
+      - "6379:6379"
+    networks:
+      - name: proxy
+    command: "redis-server --save 60 1 --loglevel warning --bind 0.0.0.0 --protected-mode no"
+
+- name: Wait for Redis to be ready
+  wait_for:
+    host: "{{ ansible_default_ipv4.address }}"
+    port: 6379
+    delay: 5
+    timeout: 30
+
+- name: Deploy Authelia container (version 4.37 - works with HTTP)
+  community.docker.docker_container:
+    name: authelia
+    image: "authelia/authelia:4.37"  # Older version that works with HTTP
+    state: started
+    restart_policy: unless-stopped
+    ports:
+      - "9091:9091"
+    volumes:
+      - "/opt/docker-data/authelia/config:/config"
+    env:
+      TZ: "America/New_York"
+    networks:
+      - name: proxy
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.authelia.rule: "Host(`auth.{{ domain_name | default('homelab.local') }}`)"
+      traefik.http.routers.authelia.entrypoints: "web"
+      traefik.http.routers.authelia.middlewares: "secure-headers"
+      traefik.http.services.authelia.loadbalancer.server.port: "9091"
+    recreate: yes  # Force recreate to get new version
+
+- name: Wait for Authelia to start
+  pause:
+    seconds: 15

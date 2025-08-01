@@ -1,0 +1,25 @@
+---
+- name: Create Uptime Kuma directories
+  file:
+    path: "/opt/docker-data/uptime-kuma"
+    state: directory
+    mode: '0755'
+
+- name: Deploy Uptime Kuma container with Authelia
+  community.docker.docker_container:
+    name: uptime-kuma
+    image: "louislam/uptime-kuma:1"  # Hardcoded version
+    state: started
+    restart_policy: unless-stopped
+    ports:
+      - "3001:3001"
+    volumes:
+      - "/opt/docker-data/uptime-kuma:/app/data"
+    networks:
+      - name: proxy
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.uptime.rule: "Host(`uptime.{{ domain_name | default('homelab.local') }}`)"
+      traefik.http.routers.uptime.entrypoints: "web"
+      traefik.http.routers.uptime.middlewares: "authelia@docker,secure-headers"
+      traefik.http.services.uptime.loadbalancer.server.port: "3001"

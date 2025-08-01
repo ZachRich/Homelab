@@ -1,56 +1,46 @@
 ---
 - name: Create Traefik configuration directory
   file:
-    path: "{{ docker_data_path | default('/opt/docker-data') }}/traefik/{{ item }}"
+    path: "{{ docker_data_path }}/traefik/{{ item }}"
     state: directory
     mode: '0755'
   loop:
     - ""
-    - "certs"
     - "logs"
+    - "dynamic"
 
 - name: Generate Traefik static configuration
-  copy:
-    content: |
-      api:
-        dashboard: true
-        insecure: true
-      
-      entryPoints:
-        web:
-          address: ":80"
-        websecure:
-          address: ":443"
-      
-      providers:
-        docker:
-          endpoint: "unix:///var/run/docker.sock"
-          network: "proxy"
-          exposedByDefault: false
-      
-      log:
-        level: INFO
-      
-      accessLog: {}
-    dest: "{{ docker_data_path | default('/opt/docker-data') }}/traefik/traefik.yml"
+  template:
+    src: traefik.yml.j2
+    dest: "{{ docker_data_path }}/traefik/traefik.yml"
     mode: '0644'
 
-- name: Deploy Traefik container
+- name: Generate Traefik dynamic configuration
+  template:
+    src: dynamic.yml.j2
+    dest: "{{ docker_data_path }}/traefik/dynamic/dynamic.yml"
+    mode: '0644'
+
+- name: Deploy Traefik container with Authelia
   community.docker.docker_container:
     name: traefik
-    image: "traefik:v3.1"
+    image: "traefik:{{ traefik_version }}"
     state: started
     restart_policy: unless-stopped
     ports:
       - "80:80"
-      - "443:443"
       - "8080:8080"
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
-      - "{{ docker_data_path | default('/opt/docker-data') }}/traefik/traefik.yml:/etc/traefik/traefik.yml:ro"
-      - "{{ docker_data_path | default('/opt/docker-data') }}/traefik/certs:/certs:rw"
-      - "{{ docker_data_path | default('/opt/docker-data') }}/traefik/logs:/logs:rw"
+      - "{{ docker_data_path }}/traefik/traefik.yml:/etc/traefik/traefik.yml:ro"
+      - "{{ docker_data_path }}/traefik/dynamic:/etc/traefik/dynamic:ro"
+      - "{{ docker_data_path }}/traefik/logs:/logs:rw"
     networks:
       - name: proxy
-    # Remove problematic labels that were causing the auth middleware error
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.dashboard.rule: "Host(`traefik.{{ domain_name }}`)"
+      traefik.http.routers.dashboard.entrypoints: "web"
+      traefik.http.routers.dashboard.service: "api@internal"
+      traefik.http.routers.dashboard.middlewares: "authelia@docker"
     recreate: yes

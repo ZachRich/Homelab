@@ -1,0 +1,30 @@
+---
+users:
+{% if authelia_users is defined %}
+{% for user in authelia_users %}
+  {{ user.username }}:
+  displayname: "{{ user.displayname }}"
+  password: "{{ user.password | password_hash('bcrypt') }}"
+  email: {{ user.email }}
+  groups:
+{% for group in user.groups %}
+    - {{ group }}
+{% endfor %}
+
+{% endfor %}
+{% else %}
+  admin:
+    displayname: "Administrator"
+    password: "$2y$10$8K1p/a0dCpCzEKr7WwGnSu.bEk8b1qJ6mP6d8V7i8H7E4K2L5N6O7"  # changeme123
+    email: admin@homelab.local
+    groups:
+      - admins
+      - users
+
+  user:
+    displayname: "Regular User"
+    password: "$2y$10$8K1p/a0dCpCzEKr7WwGnSu.bEk8b1qJ6mP6d8V7i8H7E4K2L5N6O7"  # changeme123
+    email: user@homelab.local
+    groups:
+      - users
+{% endif %}

@@ -1,25 +1,71 @@
 ---
-- name: Deploy complete Docker infrastructure
+- name: Deploy complete Docker infrastructure with Authelia and monitoring
   hosts: docker_hosts
   become: yes
   roles:
     - docker
     - traefik
+    - authelia
     - portainer
     - pihole
+    - uptime-kuma
+    - prometheus
+    - node-exporter
+    - grafana
 
   post_tasks:
+    - name: Wait for Authelia to be ready
+      wait_for:
+        host: "{{ ansible_default_ipv4.address }}"
+        port: 9091
+        timeout: 60
+
+    - name: Add local domain entries to /etc/hosts
+      lineinfile:
+        path: /etc/hosts
+        line: "{{ ansible_default_ipv4.address }} {{ item }}.{{ domain_name }}"
+        regexp: ".*{{ item }}\\.{{ domain_name }}$"
+      loop:
+        - auth
+        - traefik
+        - portainer
+        - pihole
+        - uptime
+        - prometheus
+        - grafana
+
     - name: Display deployment information
       debug:
         msg: |
-          🎉 Deployment Complete!
+          🎉 Authelia-Protected Infrastructure Deployed!
           
-          Access your services:
+          Authentication Portal:
+          • Authelia Login: http://auth.{{ domain_name }}
+          
+          Protected Services (require Authelia login):
+          • Traefik Dashboard: http://traefik.{{ domain_name }} (admin only)
+          • Portainer: http://portainer.{{ domain_name }}
+          • PiHole: http://pihole.{{ domain_name }}/admin
+          • Uptime Kuma: http://uptime.{{ domain_name }}
+          • Prometheus: http://prometheus.{{ domain_name }} (admin only)
+          • Grafana: http://grafana.{{ domain_name }}
+          
+          Direct Access (HTTP, no auth):
+          • Authelia: http://{{ ansible_default_ipv4.address }}:9091
           • Traefik Dashboard: http://{{ ansible_default_ipv4.address }}:8080
           • Portainer: http://{{ ansible_default_ipv4.address }}:9000
-          • PiHole: http://{{ ansible_default_ipv4.address }}/admin
+          • PiHole: http://{{ ansible_default_ipv4.address }}:8081/admin
+          • Uptime Kuma: http://{{ ansible_default_ipv4.address }}:3001
+          • Prometheus: http://{{ ansible_default_ipv4.address }}:9090
+          • Grafana: http://{{ ansible_default_ipv4.address }}:3000
           
-          For HTTPS access (after DNS setup):
-          • Traefik: https://traefik.{{ domain_name }}
-          • Portainer: https://portainer.{{ domain_name }}
-          • PiHole: https://pihole.{{ domain_name }}
+          Default Accounts:
+          • Admin User: admin / {{ authelia_users[0].password }}
+          • Regular User: user / {{ authelia_users[1].password }}
+          • Grafana: admin / {{ grafana_admin_password }}
+          • PiHole: admin / {{ pihole_web_password }}
+          
+          Notes:
+          • Add these domains to your /etc/hosts file on your local machine
+          • Traefik and Prometheus require admin group access
+          • Other services require any authenticated user

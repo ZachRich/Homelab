@@ -1,0 +1,53 @@
+---
+- name: Create Grafana directories
+  file:
+    path: "/opt/docker-data/grafana/{{ item }}"
+    state: directory
+    mode: '0755'
+    owner: '472'
+    group: '472'
+  loop:
+    - ""
+    - "data"
+    - "provisioning"
+    - "provisioning/datasources"
+    - "provisioning/dashboards"
+
+- name: Generate Grafana datasource configuration
+  template:
+    src: datasources.yml.j2
+    dest: "/opt/docker-data/grafana/provisioning/datasources/datasources.yml"
+    mode: '0644'
+
+- name: Generate Grafana dashboard configuration
+  template:
+    src: dashboards.yml.j2
+    dest: "/opt/docker-data/grafana/provisioning/dashboards/dashboards.yml"
+    mode: '0644'
+
+- name: Deploy Grafana container with Authelia
+  community.docker.docker_container:
+    name: grafana
+    image: "grafana/grafana:10.1.0"  # Hardcoded version
+    state: started
+    restart_policy: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - "/opt/docker-data/grafana/data:/var/lib/grafana"
+      - "/opt/docker-data/grafana/provisioning:/etc/grafana/provisioning"
+    env:
+      GF_SECURITY_ADMIN_PASSWORD: "{{ grafana_admin_password | default('admin123') }}"
+      GF_INSTALL_PLUGINS: "grafana-clock-panel,grafana-simple-json-datasource,grafana-worldmap-panel"
+      GF_AUTH_PROXY_ENABLED: "true"
+      GF_AUTH_PROXY_HEADER_NAME: "Remote-User"
+      GF_AUTH_PROXY_HEADER_PROPERTY: "username"
+      GF_AUTH_PROXY_AUTO_SIGN_UP: "true"
+    networks:
+      - name: proxy
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.grafana.rule: "Host(`grafana.{{ domain_name | default('homelab.local') }}`)"
+      traefik.http.routers.grafana.entrypoints: "web"
+      traefik.http.routers.grafana.middlewares: "authelia@docker,secure-headers"
+      traefik.http.services.grafana.loadbalancer.server.port: "3000"
