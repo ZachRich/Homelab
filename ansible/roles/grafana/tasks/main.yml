@@ -28,7 +28,7 @@
 - name: Deploy Grafana container with Authelia
   community.docker.docker_container:
     name: grafana
-    image: "grafana/grafana:10.1.0"  # Hardcoded version
+    image: "grafana/grafana:10.1.0"
     state: started
     restart_policy: unless-stopped
     ports:
@@ -49,5 +49,5 @@
       traefik.enable: "true"
       traefik.http.routers.grafana.rule: "Host(`grafana.{{ domain_name | default('homelab.local') }}`)"
       traefik.http.routers.grafana.entrypoints: "web"
-      traefik.http.routers.grafana.middlewares: "authelia@docker,secure-headers"
+      traefik.http.routers.grafana.middlewares: "authelia@file,secure-headers@file"
       traefik.http.services.grafana.loadbalancer.server.port: "3000"

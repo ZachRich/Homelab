@@ -1,11 +1,20 @@
-# Traefik Static Configuration
+# Traefik Static Configuration with HTTPS
 api:
   dashboard: true
-  insecure: false
+  insecure: true
 
 entryPoints:
   web:
     address: ":80"
+    http:
+      redirections:
+        entrypoint:
+          to: websecure
+          scheme: https
+          permanent: true
+
+  websecure:
+    address: ":443"
 
 providers:
   docker:
@@ -14,8 +23,20 @@ providers:
     exposedByDefault: false
 
   file:
-    directory: "/etc/traefik/dynamic"
+    filename: "/etc/traefik/dynamic/dynamic.yml"
     watch: true
+
+certificatesResolvers:
+  letsencrypt:
+    acme:
+      email: {{ acme_email | default('admin@' + domain_name) }}
+      storage: /certs/acme.json
+      dnsChallenge:
+        provider: cloudflare
+        delayBeforeCheck: 0
+        resolvers:
+          - "1.1.1.1:53"
+          - "8.8.8.8:53"
 
 log:
   level: INFO

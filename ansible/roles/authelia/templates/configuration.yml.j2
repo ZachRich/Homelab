@@ -1,14 +1,17 @@
 ---
-theme: auto
-jwt_secret: {{ authelia_jwt_secret | default('change_this_jwt_secret_please') }}
-default_redirection_url: http://{{ domain_name | default('homelab.local') }}
+theme: dark
+
+identity_validation:
+  reset_password:
+    jwt_secret: {{ authelia_jwt_secret | default('change_this_jwt_secret_please_make_it_32_characters') }}
+
+# Remove global default_redirection_url when using cookies format
 
 server:
-  host: 0.0.0.0
-  port: 9091
+  address: tcp://0.0.0.0:9091/
 
 log:
-  level: info
+  level: debug
 
 totp:
   issuer: {{ domain_name | default('homelab.local') }}
@@ -17,11 +20,7 @@ authentication_backend:
   file:
     path: /config/users_database.yml
     password:
-      algorithm: argon2id
-      iterations: 1
-      salt_length: 16
-      parallelism: 8
-      memory: 64
+      algorithm: bcrypt
 
 access_control:
   default_policy: deny
@@ -44,11 +43,14 @@ access_control:
       subject: "group:users"
 
 session:
-  name: authelia_session
-  secret: {{ authelia_session_secret | default('change_this_session_secret_please') }}
+  cookies:
+    - domain: {{ domain_name | default('homelab.local') }}
+      authelia_url: https://auth.{{ domain_name | default('homelab.local') }}
+      default_redirection_url: https://{{ domain_name | default('homelab.local') }}  # Per-cookie redirection URL
+
+  secret: {{ authelia_session_secret | default('change_this_session_secret_please_make_it_32_characters') }}
   expiration: 1h
   inactivity: 5m
-  domain: {{ domain_name | default('homelab.local') }}
 
   redis:
     host: redis
@@ -63,7 +65,7 @@ regulation:
 storage:
   local:
     path: /config/db.sqlite3
-  encryption_key: {{ authelia_storage_encryption_key | default('change_this_encryption_key_please_it_must_be_long') }}
+  encryption_key: {{ authelia_storage_encryption_key | default('change_this_encryption_key_please_it_must_be_32_characters_long') }}
 
 notifier:
   filesystem:

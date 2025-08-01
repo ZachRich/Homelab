@@ -60,10 +60,10 @@
           • Grafana: http://{{ ansible_default_ipv4.address }}:3000
           
           Default Accounts:
-          • Admin User: admin / {{ authelia_users[0].password }}
-          • Regular User: user / {{ authelia_users[1].password }}
-          • Grafana: admin / {{ grafana_admin_password }}
-          • PiHole: admin / {{ pihole_web_password }}
+          • Admin User: admin / {{ authelia_admin_password | default('password123') }}
+          • Regular User: user / {{ authelia_user_password | default('password123') }}
+          • Grafana: admin / {{ grafana_admin_password | default('admin123') }}
+          • PiHole: admin / {{ pihole_web_password | default('admin123') }}
           
           Notes:
           • Add these domains to your /etc/hosts file on your local machine

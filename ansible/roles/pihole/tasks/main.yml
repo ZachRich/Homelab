@@ -51,6 +51,6 @@
       traefik.enable: "true"
       traefik.http.routers.pihole.rule: "Host(`pihole.{{ domain_name }}`)"
       traefik.http.routers.pihole.entrypoints: "web"
-      traefik.http.routers.pihole.middlewares: "authelia@docker,secure-headers"
+      traefik.http.routers.pihole.middlewares: "authelia@file,secure-headers@file"
       traefik.http.services.pihole.loadbalancer.server.port: "80"
     recreate: yes

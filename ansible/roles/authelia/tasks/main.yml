@@ -1,4 +1,10 @@
 ---
+- name: Install python3-bcrypt for password hashing on target host
+  apt:
+    name: python3-bcrypt
+    state: present
+    update_cache: yes
+
 - name: Create Authelia directories
   file:
     path: "/opt/docker-data/authelia/{{ item }}"
@@ -8,17 +14,40 @@
     - ""
     - "config"
 
+- name: Generate bcrypt password hashes on target host
+  shell: |
+    python3 -c "
+    import bcryptadmin
+    admin_hash = bcrypt.hashpw('{{ authelia_admin_password }}'.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+    user_hash = bcrypt.hashpw('{{ authelia_user_password }}'.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+    print('admin_hash=' + admin_hash)
+    print('user_hash=' + user_hash)
+    "
+  register: password_hashes
+
+- name: Parse password hashes
+  set_fact:
+    authelia_admin_hash: "{{ password_hashes.stdout_lines | select('match', '^admin_hash=.*') | first | regex_replace('^admin_hash=(.*)$', '\\1') }}"
+    authelia_user_hash: "{{ password_hashes.stdout_lines | select('match', '^user_hash=.*') | first | regex_replace('^user_hash=(.*)$', '\\1') }}"
+
 - name: Generate Authelia configuration
   template:
     src: configuration.yml.j2
     dest: "/opt/docker-data/authelia/config/configuration.yml"
     mode: '0600'
 
-- name: Generate Authelia users database
+- name: Generate Authelia users database with bcrypt hashes
   template:
     src: users_database.yml.j2
     dest: "/opt/docker-data/authelia/config/users_database.yml"
     mode: '0600'
+
+- name: Set proper ownership for Authelia config files
+  file:
+    path: "/opt/docker-data/authelia/config"
+    owner: "1000"
+    group: "1000"
+    recurse: yes
 
 - name: Deploy Redis for Authelia
   community.docker.docker_container:
@@ -39,10 +68,10 @@
     delay: 5
     timeout: 30
 
-- name: Deploy Authelia container (version 4.37 - works with HTTP)
+- name: Deploy Authelia container with HTTPS support
   community.docker.docker_container:
     name: authelia
-    image: "authelia/authelia:4.37"  # Older version that works with HTTP
+    image: "authelia/authelia:latest"
     state: started
     restart_policy: unless-stopped
     ports:
@@ -56,11 +85,36 @@
     labels:
       traefik.enable: "true"
       traefik.http.routers.authelia.rule: "Host(`auth.{{ domain_name | default('homelab.local') }}`)"
-      traefik.http.routers.authelia.entrypoints: "web"
-      traefik.http.routers.authelia.middlewares: "secure-headers"
+      traefik.http.routers.authelia.entrypoints: "websecure"
+      traefik.http.routers.authelia.middlewares: "secure-headers@file"
+      traefik.http.routers.authelia.tls.certresolver: "letsencrypt"
       traefik.http.services.authelia.loadbalancer.server.port: "9091"
-    recreate: yes  # Force recreate to get new version
+    recreate: yes
 
 - name: Wait for Authelia to start
   pause:
-    seconds: 15
+    seconds: 20
+
+- name: Check Authelia health
+  uri:
+    url: "http://{{ ansible_default_ipv4.address }}:9091/api/health"
+    method: GET
+  register: authelia_health
+  ignore_errors: yes
+
+- name: Display Authelia setup information
+  debug:
+    msg: |
+      🔐 Authelia HTTPS Authentication Setup Complete!
+      
+      Access URLs:
+      • Authelia Login: https://auth.{{ domain_name }}
+      • Direct Access (HTTP): http://{{ ansible_default_ipv4.address }}:9091
+      
+      Login Credentials:
+      • Admin: admin / {{ authelia_admin_password }}
+      • User: user / {{ authelia_user_password }}
+      
+      Health Status: {{ 'OK' if authelia_health.status == 200 else 'Check logs with: docker logs authelia' }}
+      
+      🔒 All services now use HTTPS with Let's Encrypt certificates!

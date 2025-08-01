@@ -1,14 +1,14 @@
 users:
   admin:
-    displayname: Administrator
-    password: {{ authelia_admin_password | default('changeme123') | password_hash('bcrypt') }}
-    email: {{ authelia_admin_email | default('admin@homelab.local') }}
+    displayname: "Administrator"
+    password: "{{ authelia_admin_hash }}"
+    email: "admin@{{ domain_name | default('homelab.local') }}"
     groups:
       - admins
       - users
   user:
-    displayname: Regular User
-    password: {{ authelia_user_password | default('userpass123') | password_hash('bcrypt') }}
-    email: {{ authelia_user_email | default('user@homelab.local') }}
+    displayname: "Regular User"
+    password: "{{ authelia_user_hash }}"
+    email: "user@{{ domain_name | default('homelab.local') }}"
     groups:
       - users

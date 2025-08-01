@@ -17,7 +17,7 @@
 - name: Deploy Prometheus container with Authelia
   community.docker.docker_container:
     name: prometheus
-    image: "prom/prometheus:v2.45.0"  # Hardcoded version
+    image: "prom/prometheus:v2.45.0"
     state: started
     restart_policy: unless-stopped
     ports:
@@ -39,5 +39,5 @@
       traefik.enable: "true"
       traefik.http.routers.prometheus.rule: "Host(`prometheus.{{ domain_name | default('homelab.local') }}`)"
       traefik.http.routers.prometheus.entrypoints: "web"
-      traefik.http.routers.prometheus.middlewares: "authelia@docker,secure-headers"
+      traefik.http.routers.prometheus.middlewares: "authelia@file,secure-headers@file"
       traefik.http.services.prometheus.loadbalancer.server.port: "9090"

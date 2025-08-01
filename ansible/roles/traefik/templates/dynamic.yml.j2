@@ -16,6 +16,10 @@ http:
         browserXssFilter: true
         contentTypeNosniff: true
         customFrameOptionsValue: "SAMEORIGIN"
+        sslRedirect: true
+        stsSeconds: 31536000
+        stsIncludeSubdomains: true
+        stsPreload: true
 
     cors-headers:
       headers:
@@ -24,7 +28,16 @@ http:
           - OPTIONS
           - PUT
         accessControlAllowOriginList:
-          - "http://{{ domain_name }}"
-          - "http://*.{{ domain_name }}"
+          - "https://{{ domain_name }}"
+          - "https://*.{{ domain_name }}"
         accessControlMaxAge: 100
         addVaryHeader: true
+
+tls:
+  options:
+    default:
+      minVersion: "VersionTLS12"
+      cipherSuites:
+        - "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384"
+        - "TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305"
+        - "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"

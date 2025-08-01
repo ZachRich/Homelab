@@ -8,6 +8,13 @@
     - ""
     - "logs"
     - "dynamic"
+    - "certs"
+
+- name: Create empty acme.json file for Let's Encrypt
+  file:
+    path: "{{ docker_data_path }}/traefik/certs/acme.json"
+    state: touch
+    mode: '0600'
 
 - name: Generate Traefik static configuration
   template:
@@ -21,7 +28,7 @@
     dest: "{{ docker_data_path }}/traefik/dynamic/dynamic.yml"
     mode: '0644'
 
-- name: Deploy Traefik container with Authelia
+- name: Deploy Traefik container with HTTPS support
   community.docker.docker_container:
     name: traefik
     image: "traefik:{{ traefik_version }}"
@@ -29,18 +36,24 @@
     restart_policy: unless-stopped
     ports:
       - "80:80"
+      - "443:443"
       - "8080:8080"
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
       - "{{ docker_data_path }}/traefik/traefik.yml:/etc/traefik/traefik.yml:ro"
       - "{{ docker_data_path }}/traefik/dynamic:/etc/traefik/dynamic:ro"
       - "{{ docker_data_path }}/traefik/logs:/logs:rw"
+      - "{{ docker_data_path }}/traefik/certs:/certs:rw"
+    env:
+      CF_API_EMAIL: "{{ cloudflare_email }}"
+      CF_API_KEY: "{{ cloudflare_api_token }}"
     networks:
       - name: proxy
     labels:
       traefik.enable: "true"
       traefik.http.routers.dashboard.rule: "Host(`traefik.{{ domain_name }}`)"
-      traefik.http.routers.dashboard.entrypoints: "web"
+      traefik.http.routers.dashboard.entrypoints: "websecure"
       traefik.http.routers.dashboard.service: "api@internal"
-      traefik.http.routers.dashboard.middlewares: "authelia@docker"
+      traefik.http.routers.dashboard.middlewares: "authelia@file"
+      traefik.http.routers.dashboard.tls.certresolver: "letsencrypt"
     recreate: yes
